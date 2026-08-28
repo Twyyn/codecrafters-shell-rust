@@ -1,5 +1,5 @@
 use crate::{
-    builtin::Builtin,
+    builtin::{Builtin, EchoCommand},
     env::{Args, Environment},
     exec::{Execute, ExecutionResult},
 };
@@ -18,6 +18,10 @@ impl Command {
 
         match name {
             "exit" => Ok(Some(Self::Builtin(Builtin::Exit))),
+            "echo" => Ok(Some(Self::Builtin(Builtin::Echo(EchoCommand::new(
+                args.into_iter().map(str::to_string).collect(),
+            ))))),
+
             _ => Err(CommandError::NotFound(name.into())),
         }
     }
@@ -28,16 +32,16 @@ impl Execute for Command {
 
     fn execute(&self, env: &mut Environment) -> Result<ExecutionResult, Self::Error> {
         match self {
-            Self::Builtin(builtin) => match builtin.execute(env) {
-                Ok(result) => Ok(result),
-                Err(never) => match never {},
-            },
+            Self::Builtin(builtin) => Ok(builtin.execute(env)?),
         }
     }
 }
 
 #[derive(Debug, Error)]
 pub enum CommandError {
+    #[error(transparent)]
+    Builtin(#[from] crate::builtin::BuiltinError),
+
     #[error("{0}: command not found")]
     NotFound(String),
 }
